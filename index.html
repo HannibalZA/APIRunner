@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Runner</title>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon"><i class="ri-code-view"></i></div>
+            API Runner
+        </div>
+        <div class="header-actions">
+            <button class="theme-toggle" onclick="toggleTheme()">
+                <i class="ri-moon-line"></i>
+                <span id="themeText">Dark</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="workspace-header">
+                    <div class="workspace-title">
+                        <i class="ri-briefcase-line"></i>
+                        <span>Workspace</span>
+                    </div>
+                    <div class="workspace-actions">
+                        <button class="icon-btn-small" onclick="showImportExportMenu(event)" title="Import/Export">
+                            <i class="ri-more-2-fill"></i>
+                        </button>
+                        <button class="icon-btn-small" onclick="showNewFolderModal()" title="New Folder">
+                            <i class="ri-folder-add-line"></i>
+                        </button>
+                        <button class="icon-btn-small" onclick="createNewTab()" title="New Request">
+                            <i class="ri-add-line"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-nav">
+                <div class="nav-item active" onclick="switchSidebarView('collections')">
+                    <i class="ri-folder-line"></i>
+                    <span>Collections</span>
+                </div>
+                <div class="nav-item" onclick="switchSidebarView('history')">
+                    <i class="ri-history-line"></i>
+                    <span>History</span>
+                </div>
+            </div>
+
+            <div class="search-bar">
+                <i class="ri-search-line"></i>
+                <input type="text" placeholder="Search collections" id="searchInput" onkeyup="filterCollections()">
+            </div>
+            
+            <div class="collections-tree" id="collectionsTree">
+                <div class="empty-state-mini">
+                    <i class="ri-folder-line"></i>
+                    <p>No collections yet</p>
+                    <button class="text-btn" onclick="createNewTab()">Create a request</button>
+                </div>
+            </div>
+            
+            <div class="history-list" id="historyList" style="display: none;">
+                <div class="empty-state-mini">
+                    <i class="ri-history-line"></i>
+                    <p>No history yet</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="resizer" id="sidebarResizer" data-direction="horizontal"></div>
+
+        <div class="main-content">
+            <div class="request-tabs-bar" id="requestTabsBar">
+                <div class="request-tab-item active" data-tab-id="0" onclick="switchToTab(0)">
+                    <span class="method-badge method-get">GET</span>
+                    <span>Request 1</span>
+                    <button class="close-tab-btn" onclick="closeTab(0, event)"><i class="ri-close-line"></i></button>
+                </div>
+                <button class="add-tab-btn" onclick="createNewTab()">
+                    <i class="ri-add-line"></i>
+                </button>
+            </div>
+
+            <div id="tabContentContainer"></div>
+        </div>
+    </div>
+
+    <!-- Context Menu for Import/Export -->
+    <div class="context-menu" id="importExportMenu" style="display: none;">
+        <div class="context-menu-item" onclick="importCollection()">
+            <i class="ri-download-2-line"></i>
+            <span>Import Collection</span>
+        </div>
+        <div class="context-menu-item" onclick="exportAllCollections()">
+            <i class="ri-upload-2-line"></i>
+            <span>Export All Collections</span>
+        </div>
+    </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="importFileInput" accept=".json" style="display: none;" onchange="handleImportFile(event)">
+
+    <!-- Save Request Modal -->
+    <div class="modal" id="saveModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Save Request</h2>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Request Name</label>
+                    <input type="text" id="requestName" placeholder="Enter a name for this request">
+                </div>
+                <div class="form-group">
+                    <label>Save to Folder (optional)</label>
+                    <select id="folderSelect" class="folder-select">
+                        <option value="">Root</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-secondary" onclick="closeSaveModal()">Cancel</button>
+                <button class="modal-btn modal-btn-primary" onclick="confirmSaveRequest()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Folder Modal -->
+    <div class="modal" id="newFolderModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>New Folder</h2>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Folder Name</label>
+                    <input type="text" id="folderName" placeholder="Enter folder name">
+                </div>
+                <div class="form-group">
+                    <label>Parent Folder (optional)</label>
+                    <select id="parentFolderSelect" class="folder-select">
+                        <option value="">Root</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-secondary" onclick="closeNewFolderModal()">Cancel</button>
+                <button class="modal-btn modal-btn-primary" onclick="confirmNewFolder()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="exportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Export Collection</h2>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Collection Name</label>
+                    <input type="text" id="exportCollectionName" placeholder="My API Collection" value="My API Collection">
+                </div>
+                <div class="form-group">
+                    <label>Description (optional)</label>
+                    <textarea id="exportDescription" placeholder="Collection description" rows="3" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 13px; font-family: inherit; resize: vertical;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-secondary" onclick="closeExportModal()">Cancel</button>
+                <button class="modal-btn modal-btn-primary" onclick="confirmExport()">Export</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="confirmTitle">Confirm Action</h2>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Are you sure?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-secondary" onclick="closeConfirmModal(false)">Cancel</button>
+                <button class="modal-btn modal-btn-danger" id="confirmBtn" onclick="closeConfirmModal(true)">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Modal -->
+    <div class="modal" id="alertModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="alertTitle">Notice</h2>
+            </div>
+            <div class="modal-body">
+                <p id="alertMessage">This is an alert message.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-primary" onclick="closeAlertModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Console Panel -->
+    <div class="console-panel" id="consolePanel">
+        <div class="resizer console-resizer" id="consoleResizer" data-direction="vertical"></div>
+        <div class="console-header">
+            <div class="console-title">
+                <i class="ri-terminal-box-line"></i>
+                <span>Console</span>
+            </div>
+            <div class="console-actions">
+                <button class="icon-btn-small" onclick="clearConsole()" title="Clear">
+                    Clear
+                </button>
+                <button class="icon-btn-small" onclick="toggleConsole()" title="Close console">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+        </div>
+        <div class="console-content" id="consoleContent">
+            <div class="console-empty">
+                <i class="ri-radar-line"></i>
+                <p>No network activity yet. Send a request to see details.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Console Toggle Button (bottom bar) -->
+    <div class="console-toggle-bar">
+        <button class="console-toggle-btn" onclick="toggleConsole()">
+            <i class="ri-terminal-box-line"></i>
+            <span>Console</span>
+            <span class="console-badge" id="consoleBadge" style="display: none;">0</span>
+        </button>
+    </div>
+
+    <!-- Code Generation Modal -->
+    <div class="modal" id="codeModal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Generate Code</h2>
+                <button class="modal-close-btn" onclick="closeCodeModal()">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Language / Library</label>
+                    <select id="codeLanguageSelect" class="code-language-select" onchange="updateCodeGeneration()">
+                        <optgroup label="C#">
+                            <option value="csharp-httpclient">HttpClient</option>
+                            <option value="csharp-restsharp">RestSharp</option>
+                        </optgroup>
+                        <optgroup label="Command Line">
+                            <option value="curl">cURL</option>
+                        </optgroup>
+                        <optgroup label="Go">
+                            <option value="go">Native</option>
+                        </optgroup>
+                        <optgroup label="Java">
+                            <option value="java">OkHttp</option>
+                        </optgroup>
+                        <optgroup label="JavaScript">
+                            <option value="fetch">Fetch API</option>
+                            <option value="xhr">XMLHttpRequest</option>
+                            <option value="jquery">jQuery</option>
+                        </optgroup>
+                        <optgroup label="Node.js">
+                            <option value="node-axios">Axios</option>
+                            <option value="node-native">Native HTTPS</option>
+                            <option value="node-request">Request</option>
+                        </optgroup>
+                        <optgroup label="PHP">
+                            <option value="php-curl">cURL</option>
+                            <option value="php-guzzle">Guzzle</option>
+                        </optgroup>
+                        <optgroup label="Python">
+                            <option value="python-requests">Requests</option>
+                            <option value="python-http">http.client</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="code-preview-container">
+                    <div class="code-preview-header">
+                        <span class="code-preview-title">Code Preview</span>
+                        <button class="icon-btn-small" onclick="copyGeneratedCode()" title="Copy code">
+                            <i class="ri-file-copy-line"></i>
+                        </button>
+                    </div>
+                    <pre class="code-preview" id="codePreview"><code id="generatedCode"></code></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn modal-btn-secondary" onclick="closeCodeModal()">Close</button>
+                <button class="modal-btn modal-btn-primary" onclick="copyGeneratedCode()">
+                    <i class="ri-file-copy-line"></i>
+                    Copy Code
+                </button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
